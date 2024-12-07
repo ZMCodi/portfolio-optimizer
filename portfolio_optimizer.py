@@ -56,6 +56,45 @@ class PortfolioOptimizer():
     def port_vols(self, weights):
         return np.sqrt(np.dot(np.array(weights).T, np.dot(self.rets.cov() * 252, np.array(weights))))
 
+    def port_sharpe(self, weights):
+        return (self.port_rets(weights) - self.r) / self.port_vols(weights)
+    
+    def generate_constrained_weights(self, num_of_assets, min_alloc, max_alloc):
+        """
+        Efficiently generate random weights that satisfy allocation constraints
+        using the stick-breaking method with rejection sampling only on valid ranges.
+        """
+        weights = np.zeros(num_of_assets)
+        remaining = 1.0
+        remaining_assets = num_of_assets
+        
+        for i in range(num_of_assets - 1):
+            # Calculate valid range for this asset
+            min_for_this = max(min_alloc, 
+                            remaining - (remaining_assets - 1) * max_alloc)
+            max_for_this = min(max_alloc, 
+                            remaining - (remaining_assets - 1) * min_alloc)
+            
+            # Generate a valid weight for this asset
+            if min_for_this <= max_for_this:
+                weights[i] = np.random.uniform(min_for_this, max_for_this)
+            else:
+                # If no valid range, distribute remaining equally
+                return np.full(num_of_assets, 1.0/num_of_assets)
+            
+            remaining -= weights[i]
+            remaining_assets -= 1
+        
+        # Set the last weight
+        weights[-1] = remaining
+        
+        # Verify constraints are met, if not return equal weights
+        if (weights[-1] < min_alloc or weights[-1] > max_alloc or 
+            not np.isclose(np.sum(weights), 1.0)):
+            return np.full(num_of_assets, 1.0/num_of_assets)
+        
+        return weights
+
     def mcs_port_diagram(self, I=10000, plot=True):
 
         p_rets = []
@@ -64,8 +103,11 @@ class PortfolioOptimizer():
         for p in range(I):
         
             # generate and normalize weights
-            weights = np.random.random(self.num_of_assets)
-            weights /= np.sum(weights)
+            weights = self.generate_constrained_weights(
+                self.num_of_assets,
+                self.min_alloc,
+                self.max_alloc
+            )
             
             # store each weight and volatility
             p_rets.append(self.port_rets(weights))
@@ -161,39 +203,10 @@ class PortfolioOptimizer():
         return {'volatility': round(float(volatility), 3), 'weights': weights}
 
 
-# Initialize optimizer with some diverse assets
-tickers = ['VOO', 'BND', 'VNQ', 'GLD', 'VWO']  # US stocks, bonds, real estate, gold, emerging markets
-optimizer = PortfolioOptimizer(tickers)
 
+tickers = ['AAPL', 'TSLA', 'MSFT']
+optimizer = PortfolioOptimizer(tickers, max_alloc=0.5)
 
-# Test optimal Sharpe portfolio
-print("\nOptimal Sharpe Ratio Portfolio:")
 print(optimizer.optimal_sharpe_portfolio)
 
-# Run and display Monte Carlo simulation
-print("\nRunning Monte Carlo Simulation...")
-optimizer.mcs_port_diagram(I=5000)  # Using fewer points for faster testing
-
-# Generate efficient frontier
-print("\nGenerating Efficient Frontier...")
-optimizer.efficient_frontier(I=5000)
-
-# Test portfolio lookup by volatility
-# Try a moderate volatility target
-print("\nPortfolio for 15% volatility:")
-print(optimizer.portfolio_for_volatility(0.15))
-
-# Test portfolio lookup by return
-# Try a moderate return target
-print("\nPortfolio for 10% return:")
-print(optimizer.portfolio_for_returns(0.10))
-
-# Test with different allocation constraints
-print("\nTesting with minimum 10% allocation:")
-constrained_optimizer = PortfolioOptimizer(tickers, min_alloc=0.1)
-print(constrained_optimizer.optimal_sharpe_portfolio)
-
-# Test with risk-free rate
-print("\nTesting with 2% risk-free rate:")
-rf_optimizer = PortfolioOptimizer(tickers, r=0.02)
-print(rf_optimizer.optimal_sharpe_portfolio)
+optimizer.efficient_frontier()
