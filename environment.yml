@@ -1,0 +1,9 @@
+name: portfolio-optimizer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - yfinance
+  - scipy
+  - matplotlib
+prefix: /Users/ZMCodi/miniforge3/envs/portfolio-optimizer
