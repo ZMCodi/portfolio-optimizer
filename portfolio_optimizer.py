@@ -55,7 +55,7 @@ class PortfolioOptimizer():
         mean_returns = np.array(self.rets.mean())
 
         if weights.ndim == 1:
-            return np.sum(self.rets.mean() * np.array(weights)) * 252
+            return float(np.sum(self.rets.mean() * np.array(weights)) * 252)
         else:
             return np.sum(mean_returns[np.newaxis, :] * weights, axis=1) * 252
     
@@ -64,12 +64,12 @@ class PortfolioOptimizer():
         cov_matrix = self.rets.cov() * 252
 
         if weights.ndim == 1:
-            return np.sqrt(np.sum(weights * (weights @ cov_matrix)))
+            return float(np.sqrt(np.sum(weights * (weights @ cov_matrix))))
         else:
             return np.sqrt(np.sum(weights * (weights @ cov_matrix), axis=1))
 
     def port_sharpe(self, weights):
-        return (self.port_rets(weights) - self.r) / self.port_vols(weights)
+        return float((self.port_rets(weights) - self.r) / self.port_vols(weights))
     
     def generate_constrained_weights(self, I):
         """Generate I sets of weights at once"""
@@ -123,7 +123,7 @@ class PortfolioOptimizer():
                 plt.colorbar(label='Sharpe ratio')
                 plt.show()
 
-        return min(p_vols), max(p_vols), p_vols, p_rets  
+        return p_vols, p_rets  
 
 
     def efficient_frontier(self, plot=True, I=10000):
@@ -138,9 +138,9 @@ class PortfolioOptimizer():
         
         bnds = tuple((self.min_alloc, self.max_alloc) for x in range(self.num_of_assets))
 
-        low_vol, high_vol, scatter_vols, scatter_rets = self.mcs_port_diagram(I=I, plot=False)
+        scatter_vols, scatter_rets = self.mcs_port_diagram(I=I, plot=False)
 
-        t_vols = np.linspace(low_vol, high_vol, 50)
+        t_vols = np.linspace(min(scatter_vols), max(scatter_vols), 50)
         t_rets = []
         weights = []
         for t_vol in t_vols:
@@ -203,39 +203,3 @@ class PortfolioOptimizer():
 # print(optimizer.optimal_sharpe_portfolio)
 
 # optimizer.efficient_frontier()
-
-# Initialize optimizer with some diverse assets
-tickers = ['VOO', 'BND', 'VNQ', 'GLD', 'VWO']  # US stocks, bonds, real estate, gold, emerging markets
-optimizer = PortfolioOptimizer(tickers)
-
-# Test optimal Sharpe portfolio
-print("\nOptimal Sharpe Ratio Portfolio:")
-print(optimizer.optimal_sharpe_portfolio)
-
-# Run and display Monte Carlo simulation
-print("\nRunning Monte Carlo Simulation...")
-optimizer.mcs_port_diagram(I=500000)  # Using fewer points for faster testing
-
-# Generate efficient frontier
-print("\nGenerating Efficient Frontier...")
-optimizer.efficient_frontier(I=500000)
-
-# Test portfolio lookup by volatility
-# Try a moderate volatility target
-print("\nPortfolio for 15% volatility:")
-print(optimizer.portfolio_for_volatility(0.15))
-
-# Test portfolio lookup by return
-# Try a moderate return target
-print("\nPortfolio for 10% return:")
-print(optimizer.portfolio_for_returns(0.10))
-
-# Test with different allocation constraints
-print("\nTesting with minimum 10% allocation:")
-constrained_optimizer = PortfolioOptimizer(tickers, min_alloc=0.1)
-print(constrained_optimizer.optimal_sharpe_portfolio)
-
-# Test with risk-free rate
-print("\nTesting with 2% risk-free rate:")
-rf_optimizer = PortfolioOptimizer(tickers, r=0.02)
-print(rf_optimizer.optimal_sharpe_portfolio)
