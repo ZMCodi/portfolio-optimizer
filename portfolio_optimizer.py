@@ -13,7 +13,7 @@ class PortfolioOptimizer():
         if start is None:
             start = (pd.Timestamp.now() - pd.DateOffset(years=2)).strftime('%Y-%m-%d')
 
-        self.data = yf.download(tickers, start=start)['Adj Close'].dropna()
+        self.data = yf.download(tickers, start=start)['Close'].dropna()
         self.asset_names = list(self.data.columns)
         self.rets = np.log(self.data / self.data.shift(1))
         self.num_of_assets = len(self.rets.columns)
@@ -195,11 +195,3 @@ class PortfolioOptimizer():
         weights = dict(zip(self.asset_names, [round(float(w), 3) for w in self.t_weights[idx]]))
 
         return {'volatility': round(float(volatility), 3), 'weights': weights}
-
-
-# tickers = ['BTC-GBP', 'V3AB.L', 'VFEG.L' ,'CNX1.L', '0P0000TKZO.L', 'PHAU.L']
-# optimizer = PortfolioOptimizer(tickers, start='2020-1-1')
-
-# print(optimizer.optimal_sharpe_portfolio)
-
-# optimizer.efficient_frontier()
